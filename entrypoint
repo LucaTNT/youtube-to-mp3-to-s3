@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ -n "${DOWNLOAD_CRON:-}" ]]; then
+  echo "Scheduling download job according to cron expression."
+  exec go-cron "$DOWNLOAD_CRON" bash /download.sh
+else
+  echo "Executing download on startup ..."
+  bash /download.sh
+fi
