@@ -30,7 +30,6 @@ FROM mikenye/youtube-dl
 RUN useradd -u 1001 -U -r -d /workdir youtube
 COPY --from=cron-builder /usr/local/bin/* /usr/local/bin/
 COPY --from=minio /go/bin/mc /usr/local/bin/
-#COPY --from=minio /usr/bin/mc /usr/local/bin/
 
 COPY download.sh entrypoint /
 RUN chown youtube:youtube /workdir
