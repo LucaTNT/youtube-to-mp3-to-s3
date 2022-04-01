@@ -13,24 +13,28 @@ RUN apk add --no-cache curl \
  && cd .. \
  && rm go-cron.tar.gz go-cron-${GO_CRON_VERSION} -fR
 
-#FROM minio/mc as minio
-FROM golang:1.15-alpine as minio
+# Option #1 for mc - Compiling from scratch
+FROM golang:alpine3.15 as minio
 
 ENV GOPATH /go
 ENV CGO_ENABLED 0
 ENV GO111MODULE on
 
-RUN  \
-     apk add --no-cache git && \
-     git clone https://github.com/minio/mc && cd mc && \
-     go install -v -ldflags "$(go run buildscripts/gen-ldflags.go)"
+RUN go install github.com/minio/mc@latest
 
-FROM mikenye/youtube-dl
+# Option #2 for mc - Copying directly from minio/mc (arm64 and amd64 only)
+# FROM minio/mc as minio
+
+FROM mikenye/youtube-dl:2022.02.04
 
 RUN useradd -u 1001 -U -r -d /workdir youtube
 COPY --from=cron-builder /usr/local/bin/* /usr/local/bin/
+
+# Option #1 for mc - Compiling from scratch
 COPY --from=minio /go/bin/mc /usr/local/bin/
-#COPY --from=minio /usr/bin/mc /usr/local/bin/
+
+# Option #2 for mc - Copying directly from minio/mc (arm64 and amd64 only)
+# COPY --from=minio /usr/bin/mc /usr/local/bin/
 
 COPY download.sh entrypoint /
 RUN chown youtube:youtube /workdir

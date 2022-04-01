@@ -42,7 +42,7 @@ COMMAND_AFTER_SINGLE_FILE=${COMMAND_AFTER_SINGLE_FILE:-"mc --config-dir /tmp/.mc
 export MC_HOST_s3="https://$S3_ACCESS_KEY_ID:$S3_SECRET_ACCESS_KEY@$S3_ENDPOINT"
 
 set +e
-youtube-dl --playlist-end "$DOWNLOAD_LIMIT" \
+yt-dlp --playlist-end "$DOWNLOAD_LIMIT" \
     --restrict-filenames \
     --output "$OUTPUT_RENAME_PATTERN" \
     --download-archive="$DOWNLOAD_ARCHIVE_PATH" \
