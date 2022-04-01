@@ -1,6 +1,6 @@
 The purpose of this thing is to have a recurring `youtube-dl` job monitoring a playlist and download the audio of new uploads, convert it to mp3, then upload it to a S3-compatible storage service.
 
-It uses [youtube-dl](https://youtube-dl.org/) to perform the download, [go-cron](https://github.com/djmaze/go-cron/) to schedule the job, and [Minio Client](https://docs.min.io/docs/minio-client-quickstart-guide.html) to provide the S3 upload functionality (which I'm using with [Backblaze B2](https://www.backblaze.com/b2/cloud-storage.html)).
+It uses [yt-dlp](https://github.com/yt-dlp/yt-dlp), a fork of the venerable [youtube-dl](https://youtube-dl.org/) to perform the download, [go-cron](https://github.com/djmaze/go-cron/) to schedule the job, and [Minio Client](https://docs.min.io/docs/minio-client-quickstart-guide.html) to provide the S3 upload functionality (which I'm using with [Backblaze B2](https://www.backblaze.com/b2/cloud-storage.html)).
 
 It can be used in conjunction with [worker-feed-from-bucket](https://github.com/LucaTNT/worker-feed-from-bucket) to generate an RSS feed from the bucket contents, thus creating a podcast out of the download mp3s.
 
