@@ -25,7 +25,7 @@ RUN go install github.com/minio/mc@latest
 # Option #2 for mc - Copying directly from minio/mc (arm64 and amd64 only)
 # FROM minio/mc as minio
 
-FROM mikenye/youtube-dl:2022.02.04
+FROM mikenye/youtube-dl:2023.02.17
 
 RUN useradd -u 1001 -U -r -d /workdir youtube
 COPY --from=cron-builder /usr/local/bin/* /usr/local/bin/
