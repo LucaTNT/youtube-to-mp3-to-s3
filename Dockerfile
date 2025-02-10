@@ -14,18 +14,18 @@ RUN apk add --no-cache curl \
  && rm go-cron.tar.gz go-cron-${GO_CRON_VERSION} -fR
 
 # Option #1 for mc - Compiling from scratch
-FROM golang:alpine3.15 as minio
+FROM golang:alpine3.21 AS minio
 
-ENV GOPATH /go
-ENV CGO_ENABLED 0
-ENV GO111MODULE on
+ENV GOPATH=/go
+ENV CGO_ENABLED=0
+ENV GO111MODULE=on
 
 RUN go install github.com/minio/mc@latest
 
 # Option #2 for mc - Copying directly from minio/mc (arm64 and amd64 only)
 # FROM minio/mc as minio
 
-FROM mikenye/youtube-dl:2023.10.13
+FROM mikenye/youtube-dl:2025.01.26_nohealthcheck
 
 RUN useradd -u 1001 -U -r -d /workdir youtube
 COPY --from=cron-builder /usr/local/bin/* /usr/local/bin/
