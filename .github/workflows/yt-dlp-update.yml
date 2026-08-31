@@ -5,6 +5,10 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   check-and-build:
     runs-on: ubuntu-latest
@@ -34,6 +38,14 @@ jobs:
             echo "should_build=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Install bats-core
+        if: steps.compare.outputs.should_build == 'true'
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Run unit tests
+        if: steps.compare.outputs.should_build == 'true'
+        run: bats tests/download.bats tests/entrypoint.bats
+
       - name: Set up QEMU
         if: steps.compare.outputs.should_build == 'true'
         uses: docker/setup-qemu-action@v4
@@ -41,6 +53,51 @@ jobs:
       - name: Set up Docker Buildx
         if: steps.compare.outputs.should_build == 'true'
         uses: docker/setup-buildx-action@v4
+
+      - name: Build test image with the updated yt-dlp
+        if: steps.compare.outputs.should_build == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          pull: true
+          push: false
+          load: true
+          tags: youtube-to-mp3-to-s3:ci-test
+
+      - name: Smoke test the updated image against a real YouTube download
+        if: steps.compare.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+
+          OUT_DIR="$RUNNER_TEMP/smoke"
+          mkdir -p "$OUT_DIR"
+          chmod 777 "$OUT_DIR"
+
+          # "Me at the zoo" - the first video ever uploaded to YouTube, 19s, effectively permanent.
+          docker run --rm \
+            -e YOUTUBE_URL="https://www.youtube.com/watch?v=jNQXAC9IVRw" \
+            -e DOWNLOAD_LIMIT=1 \
+            -e OUTPUT_RENAME_PATTERN="%(id)s.%(ext)s" \
+            -e DOWNLOAD_ARCHIVE_PATH=archive.txt \
+            -e COMMAND_AFTER_SINGLE_FILE=true \
+            -v "$OUT_DIR:/workdir" \
+            --entrypoint bash \
+            youtube-to-mp3-to-s3:ci-test /download.sh
+
+          mp3_count=$(find "$OUT_DIR" -maxdepth 1 -name '*.mp3' | wc -l | tr -d ' ')
+          if [ "$mp3_count" -ne 1 ]; then
+            echo "Expected exactly one mp3 file, found $mp3_count" >&2
+            exit 1
+          fi
+
+          mp3_file=$(find "$OUT_DIR" -maxdepth 1 -name '*.mp3')
+          mp3_size=$(wc -c < "$mp3_file")
+          if [ "$mp3_size" -le 10000 ]; then
+            echo "Downloaded mp3 looks too small ($mp3_size bytes) - possible extraction failure" >&2
+            exit 1
+          fi
 
       - name: Login to DockerHub
         if: steps.compare.outputs.should_build == 'true'
@@ -61,3 +118,38 @@ jobs:
           tags: |
             lucatnt/youtube-to-mp3-to-s3:latest
             lucatnt/youtube-to-mp3-to-s3:${{ steps.latest.outputs.version }}
+
+      - name: File an issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "Weekly yt-dlp update check failed";
+            const body = [
+              `The weekly yt-dlp update workflow failed while checking/updating to yt-dlp \`${{ steps.latest.outputs.version }}\`.`,
+              "",
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join("\n");
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+            });
+            const existing = openIssues.find((issue) => issue.title === title);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }

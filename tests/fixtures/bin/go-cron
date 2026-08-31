@@ -1,0 +1,10 @@
+#!/bin/bash
+# Mock go-cron for tests: records how it was invoked instead of actually scheduling anything.
+: "${MOCK_LOG:?MOCK_LOG must be set}"
+{
+  echo "=== go-cron invoked ==="
+  for arg in "$@"; do
+    printf '%s\n' "$arg"
+  done
+} >> "$MOCK_LOG"
+exit 0

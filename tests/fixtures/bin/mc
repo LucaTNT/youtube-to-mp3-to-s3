@@ -1,0 +1,10 @@
+#!/bin/bash
+# Mock mc (Minio client) for tests: records how it was invoked instead of uploading anything.
+: "${MOCK_LOG:?MOCK_LOG must be set}"
+{
+  echo "=== mc invoked ==="
+  for arg in "$@"; do
+    printf '%s\n' "$arg"
+  done
+} >> "$MOCK_LOG"
+exit "${MOCK_MC_EXIT:-0}"

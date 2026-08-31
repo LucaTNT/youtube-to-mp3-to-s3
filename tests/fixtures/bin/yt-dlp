@@ -1,0 +1,11 @@
+#!/bin/bash
+# Mock yt-dlp for tests: records how it was invoked instead of hitting the network.
+: "${MOCK_LOG:?MOCK_LOG must be set}"
+{
+  echo "=== yt-dlp invoked ==="
+  for arg in "$@"; do
+    printf '%s\n' "$arg"
+  done
+  echo "MC_HOST_s3=${MC_HOST_s3:-}"
+} >> "$MOCK_LOG"
+exit "${MOCK_YTDLP_EXIT:-0}"

@@ -1,10 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [[ -n "${DOWNLOAD_CRON:-}" ]]; then
   echo "Scheduling download job according to cron expression."
-  exec go-cron "$DOWNLOAD_CRON" bash /download.sh
+  exec go-cron "$DOWNLOAD_CRON" bash "$DIR/download.sh"
 else
   echo "Executing download on startup ..."
-  bash /download.sh
+  bash "$DIR/download.sh"
 fi
