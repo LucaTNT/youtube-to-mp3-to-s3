@@ -1,0 +1,63 @@
+name: Weekly yt-dlp Update Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Get latest yt-dlp version
+        id: latest
+        run: |
+          VERSION=$(curl -fsSL https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest | jq -r .tag_name)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Get yt-dlp version baked into published image
+        id: current
+        run: |
+          docker pull lucatnt/youtube-to-mp3-to-s3:latest
+          VERSION=$(docker run --rm --entrypoint yt-dlp lucatnt/youtube-to-mp3-to-s3:latest --version)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          if [ "${{ steps.latest.outputs.version }}" != "${{ steps.current.outputs.version }}" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        if: steps.compare.outputs.should_build == 'true'
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        if: steps.compare.outputs.should_build == 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to DockerHub
+        if: steps.compare.outputs.should_build == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push updated image
+        if: steps.compare.outputs.should_build == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          pull: true
+          push: true
+          tags: |
+            lucatnt/youtube-to-mp3-to-s3:latest
+            lucatnt/youtube-to-mp3-to-s3:${{ steps.latest.outputs.version }}
